@@ -12,18 +12,6 @@ def check3num(num):
     return str(num) 
 
 
-##
-def evaluate(board):
-    if check_status(board, COMP):
-        score = +1
-    elif check_status(board, HUMAN):
-        score = -1
-    else:
-        score = 0
-
-    return score
-
-
 #Tao ban co thanh mot array
 def board(size):
     state = np.zeros(size*size)
@@ -94,7 +82,12 @@ def score_row(board, x, y, choice):
         board[x][y+1] == choice 
     ):
         score = 2
-        return score 
+        return score
+    if(
+        board[x][y] == choice
+    ):
+        score = 1
+        return score
 
     return score
         
@@ -131,6 +124,10 @@ def score_col(board, x, y, choice):
         score = 2
         return score
 
+    if(board[x][y] == choice): 
+        score = 1
+        return score
+
     return score
 
 def score_left2right_up(board, x, y, choice):
@@ -164,6 +161,11 @@ def score_left2right_up(board, x, y, choice):
         board[x-1][y+1] == choice
     ):
         score = 2
+        return score
+    if(
+        board[x][y] == choice
+    ):
+        score = 1
         return score
 
     return score
@@ -201,30 +203,63 @@ def score_left2right_down(board, x, y, choice):
     ):
         score = 2
         return score
+    if(board[x][y] == choice): 
+        score = 1    
+        return score
 
     return score
 
 ##check ban co
-def check_status(board, choice):
+def return_score(board, choice):
     for row in range(len(board)):
         for col in range(len(board[row])):
 
             #check theo hang ngang
+            if(score_row(board, row, col, choice) > 0):
+                score = score_row(board, row, col, choice)
+                # check_human_comp(choice)
+                return score, row, col
+
+            if(score_col(board, row, col, choice) > 0):
+                score = score_col(board, row, col, choice)
+                # check_human_comp(choice)
+                return score, row, col
+
+            if(score_left2right_down(board, row, col,choice)):
+                score = score_left2right_down(board, row, col,choice)
+                # check_human_comp(choice)
+                return score, row, col
+
+            if(score_left2right_up(board, row, col, choice)):
+                score = score_left2right_up(board, row, col, choice)
+                check_human_comp(choice)
+                return score, row, col
+        
+    return 0, None, None
+
+def check_status(board, choice):
+    for row in range(len(board)):
+        for col in range(len(board[row])):
+            #check theo hang ngang
             if(score_row(board, row, col, choice) == 5):
                 check_human_comp(choice)
                 return True
+
             if(score_col(board, row, col, choice) == 5):
                 check_human_comp(choice)
                 return True
+
             if(score_left2right_down(board, row, col,choice) == 5):
                 check_human_comp(choice)
                 return True
+
             if(score_left2right_up(board, row, col, choice) == 5):
                 check_human_comp(choice)
                 return True
-                
+    
     return False
-            
+
+
 #check human or comp
 def check_human_comp(choice):
     if(choice == 1):
@@ -232,73 +267,59 @@ def check_human_comp(choice):
     elif(choice == -1):
         print("HUMAN WINS")
 
+
+
+
+
 # #thuat toan
 def alphabeta(board, depth, alpha, beta, player):
-    x = 0
-    y = 0
+
+    results = return_score(board, player)
+    value, x, y = results[0], results[1], results[2]
+
     if(depth == 0 or game_over(board)):
-        return x, y
-    if(player == COMP):
+        return value, x, y
+
+    if(player):
         v = -infinity
         for row in range(len(board)):
             for col in range(len(board[row])):
                 if(valid_move(board, row, col)):
                     v = max(v, alphabeta(board, depth - 1, alpha, beta, HUMAN)[0])
-                    if(v <= alpha):
+                      
+                    if(v >= alpha):
                         x = row
                         y = col
+
                     alpha = max(alpha, v)
                     if(beta <= alpha):
                         break
-
-        return x, y
+    
+        return alpha, x, y
     else:
         v = +infinity
         for row in range(len(board)):
             for col in range(len(board[row])):
                 if(valid_move(board, row, col)):
                     v = min(v, alphabeta(board, depth - 1, alpha, beta, COMP)[0])
-                    if(v > beta):
+                    if(v < beta):
                         x = row
                         y = col
+
                     beta = min(beta, v)
+
                     if(beta <= alpha):
                         break
 
-        return x, y
+        return beta, x, y
 
-    return x, y
 
-# def alphabeta(board, depth, alpha, beta, player):
-#     x, y = 0, 0
-#     if depth == 0 or game_over(board):
-#         return x, y
 
-#     if(player):
-#         v = -infinity
-#         for one in board:
-#             eval = alphabeta(one, depth - 1, alpha, beta, HUMAN)
-#             v = max(v, eval)
-#             alpha = max(alpha, eval)
-#             if(beta <= alpha):
-#                 break
-#         return v
 
-#     else:
-#         v = +infinity
-#         for one in board:
-#             eval = alphabeta(one, depth - 1, alpha, beta, COMP)
-#             v = min(v, eval)
-#             beta = min(beta, eval)
-#             if(beta <= alpha):
-#                 break
-#         return v 
-            
-    
     
 #check end game
 def game_over(board):
-    return check_status(board, -1) or check_status(board, 1)
+    return check_status(board, HUMAN) or check_status(board, COMP)
 
 ##Human turn
 def human_turn(board, player):
@@ -325,16 +346,19 @@ def human_turn(board, player):
 
     draw_board(board)
 
+
 def ai_turn(board, player):
     if(game_over(board)):
         return
     
-    move = alphabeta(board, 2, -infinity, +infinity, COMP)
+    move = alphabeta(board, 2, -infinity, +infinity, COMP)[1:]
     x, y = move[0], move[1]
     print(move)
-    set_move(board, x, y, COMP)
+    set_move(board, x, y, player)
 
     draw_board(board)
+
+    return x, y
     
 
 
@@ -344,12 +368,11 @@ board = board(10)
 draw_board(board)
 # print(board)
 # check_status(board, 1)
-while(check_status(board, 1) == False and check_status(board, -1) == False):
-    #Nguoi choi 1
-    human_turn(board, -1)
+while(check_status(board, COMP) == False and check_status(board, HUMAN) == False):
+    # Nguoi choi 1
+    human_turn(board, HUMAN)
 
     #Nguoi choi 2
     ai_turn(board, COMP)
 
     
-
